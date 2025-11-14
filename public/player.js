@@ -14,11 +14,30 @@ const selectionStatus = document.getElementById('selectionStatus');
 const shipGrid = document.getElementById('shipGrid');
 const errorMessage = document.getElementById('errorMessage');
 
+// Load saved name from localStorage
+window.addEventListener('DOMContentLoaded', () => {
+    const savedName = localStorage.getItem('artemisPlayerName');
+    if (savedName) {
+        playerNameInput.value = savedName;
+        // Auto-join if name exists
+        playerName = savedName;
+        displayName.textContent = savedName;
+        loginForm.style.display = 'none';
+        playerStatus.style.display = 'block';
+        updateSelectionStatus();
+        renderShips();
+        // Notify server of reconnection
+        socket.emit('reconnectPlayer', savedName);
+    }
+});
+
 // Join button handler
 joinBtn.addEventListener('click', () => {
     const name = playerNameInput.value.trim();
     if (name) {
         playerName = name;
+        // Save to localStorage
+        localStorage.setItem('artemisPlayerName', name);
         displayName.textContent = name;
         loginForm.style.display = 'none';
         playerStatus.style.display = 'block';
@@ -38,8 +57,8 @@ playerNameInput.addEventListener('keypress', (e) => {
 socket.on('gameState', (state) => {
     gameState = state;
     
-    // Check if current player still has their selection
-    const mySelection = Object.values(state.selections).find(s => s.socketId === socket.id);
+    // Check if current player still has their selection (by player name)
+    const mySelection = playerName ? state.selections[playerName] : null;
     currentSelection = mySelection || null;
     
     updateSelectionStatus();
@@ -63,7 +82,7 @@ function updateSelectionStatus() {
         
         const deselectBtn = document.getElementById('deselectBtn');
         deselectBtn.addEventListener('click', () => {
-            socket.emit('deselectPosition');
+            socket.emit('deselectPosition', playerName);
             currentSelection = null;
         });
     } else {
@@ -98,7 +117,7 @@ function renderShips() {
             
             if (takenBy) {
                 positionBtn.classList.add('taken');
-                if (takenBy.socketId === socket.id) {
+                if (takenBy.playerName === playerName) {
                     positionBtn.classList.add('my-selection');
                     positionBtn.textContent = `${position} (You)`;
                 } else {

@@ -19,7 +19,7 @@ let gameState = {
     { id: 2, name: 'USS Phoenix', positions: ['Helm', 'Weapons', 'Engineering', 'Science', 'Communications', 'Captain'] }
   ],
   selections: {}
-  // Format: { socketId: { playerName: 'John', shipId: 1, position: 'Helm' } }
+  // Format: { playerName: { playerName: 'John', shipId: 1, position: 'Helm', socketId: socket.id } }
 };
 
 // Routes
@@ -38,13 +38,23 @@ io.on('connection', (socket) => {
   // Send current game state to newly connected client
   socket.emit('gameState', gameState);
 
+  // Player reconnects with their saved name
+  socket.on('reconnectPlayer', (playerName) => {
+    if (gameState.selections[playerName]) {
+      // Update socket ID for this player
+      gameState.selections[playerName].socketId = socket.id;
+      io.emit('gameState', gameState);
+      console.log(`Player ${playerName} reconnected with new socket ${socket.id}`);
+    }
+  });
+
   // Player selects a ship and position
   socket.on('selectPosition', (data) => {
     const { playerName, shipId, position } = data;
     
-    // Check if position is already taken
+    // Check if position is already taken by someone else
     const isPositionTaken = Object.values(gameState.selections).some(
-      selection => selection.shipId === shipId && selection.position === position
+      selection => selection.shipId === shipId && selection.position === position && selection.playerName !== playerName
     );
 
     if (isPositionTaken) {
@@ -52,11 +62,11 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Remove any previous selection by this player
-    delete gameState.selections[socket.id];
+    // Remove any previous selection by this player name
+    delete gameState.selections[playerName];
 
-    // Add new selection
-    gameState.selections[socket.id] = {
+    // Add new selection (keyed by player name, not socket ID)
+    gameState.selections[playerName] = {
       playerName,
       shipId,
       position,
@@ -69,11 +79,11 @@ io.on('connection', (socket) => {
   });
 
   // Player deselects their position
-  socket.on('deselectPosition', () => {
-    if (gameState.selections[socket.id]) {
-      const selection = gameState.selections[socket.id];
+  socket.on('deselectPosition', (playerName) => {
+    if (gameState.selections[playerName]) {
+      const selection = gameState.selections[playerName];
       console.log(`Player ${selection.playerName} deselected ${selection.position}`);
-      delete gameState.selections[socket.id];
+      delete gameState.selections[playerName];
       io.emit('gameState', gameState);
     }
   });
@@ -96,11 +106,14 @@ io.on('connection', (socket) => {
 
   // Handle disconnect
   socket.on('disconnect', () => {
-    if (gameState.selections[socket.id]) {
-      const selection = gameState.selections[socket.id];
-      console.log(`Player ${selection.playerName} disconnected`);
-      delete gameState.selections[socket.id];
-      io.emit('gameState', gameState);
+    // Find selection by socket ID
+    const playerName = Object.keys(gameState.selections).find(
+      name => gameState.selections[name].socketId === socket.id
+    );
+    
+    if (playerName) {
+      console.log(`Player ${playerName} disconnected (selection preserved)`);
+      // Don't remove the selection - keep it until admin resets or player manually deselects
     }
     console.log('Client disconnected:', socket.id);
   });
