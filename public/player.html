@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artemis Ship Picker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="player-page">
+    <div class="container">
+        <header>
+            <h1>🚀 Artemis Bridge Simulator - Ship Picker</h1>
+        </header>
+
+        <div class="player-info">
+            <div id="loginForm" class="login-form">
+                <label for="playerName">Enter your name:</label>
+                <input type="text" id="playerName" placeholder="Player Name" />
+                <button id="joinBtn" class="btn btn-primary">Join Mission</button>
+            </div>
+            <div id="playerStatus" class="player-status" style="display: none;">
+                <p>Welcome, <strong id="displayName"></strong>!</p>
+                <p id="selectionStatus" class="selection-info"></p>
+            </div>
+        </div>
+
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <div class="ship-grid" id="shipGrid"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="player.js"></script>
+</body>
+</html>
